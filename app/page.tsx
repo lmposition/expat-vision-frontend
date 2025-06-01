@@ -18,8 +18,6 @@ interface Country {
   continent: string
 }
 
-
-
 interface ApiCountriesResponse {
   countries: Country[]
 }
@@ -134,13 +132,13 @@ const SearchableSelect = ({ value, onValueChange, options, placeholder, searchPl
   if (isLoading) {
     return <div className="inline-flex items-center gap-2 p-2 text-2xl sm:text-4xl font-bold">
       <Loader2 className="h-6 w-6 animate-spin" />
-      <span>{t.loading}</span>
+      <span>{t('select-loading', 'Chargement...')}</span>
     </div>
   }
 
   if (error) {
     return <div className="inline-flex items-center gap-2 p-2 text-2xl sm:text-4xl font-bold text-red-500">
-      <span>{t.errorLoading}</span>
+      <span>{t('select-errorLoading', 'Erreur de chargement')}</span>
     </div>
   }
 
@@ -157,20 +155,27 @@ const SearchableSelect = ({ value, onValueChange, options, placeholder, searchPl
         <div className="p-2 border-b">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input type="text" placeholder={searchPlaceholder} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-8 pr-2 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-primary" onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') setSearchTerm('') }} onClick={(e) => e.stopPropagation()} />
+            <input 
+              type="text" 
+              placeholder={searchPlaceholder} 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              className="w-full pl-8 pr-2 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-primary" 
+              onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') setSearchTerm('') }} 
+              onClick={(e) => e.stopPropagation()} 
+            />
           </div>
         </div>
         <div className="max-h-48 overflow-y-auto">
           {filteredOptions.length > 0 ? (
             filteredOptions.map((option: { value: string; label: string }) => (
-  <SelectItem key={option.value} value={option.value}>
-    {option.label}
-  </SelectItem>
-))
-
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))
           ) : (
             <div className="p-2 text-sm text-muted-foreground text-center">
-              {t.noResults}
+              {t('select-noResults', 'Aucun résultat trouvé')}
             </div>
           )}
         </div>
@@ -185,10 +190,30 @@ export default function HomePage() {
   const { t } = useTranslations()
   const [formData, setFormData] = useState<FormData>({ currentCountry: '', targetCountry: '', action: '', situation: '' })
 
-  const currentCountryOptions = useMemo(() => allCountries.map(country => ({ value: country.id, label: `${country.emoji} ${country.name}`, searchText: `${country.name} ${country.continent}` })), [allCountries])
-  const targetCountryOptions = useMemo(() => countriesWithSheets.filter(country => country.id !== formData.currentCountry).map(country => ({ value: country.id, label: `${country.emoji} ${country.name}`, searchText: `${country.name} ${country.continent}` })), [countriesWithSheets, formData.currentCountry])
-  const actionOptions = useMemo(() => ACTIONS.map(value => ({ value, label: t[value], searchText: t[value] })), [t])
-  const situationOptions = useMemo(() => SITUATIONS.map(value => ({ value, label: t[value], searchText: t[value] })), [t])
+  const currentCountryOptions = useMemo(() => allCountries.map(country => ({ 
+    value: country.id, 
+    label: `${country.emoji} ${country.name}`, 
+    searchText: `${country.name} ${country.continent}` 
+  })), [allCountries])
+
+  const targetCountryOptions = useMemo(() => countriesWithSheets.filter(country => country.id !== formData.currentCountry).map(country => ({ 
+    value: country.id, 
+    label: `${country.emoji} ${country.name}`, 
+    searchText: `${country.name} ${country.continent}` 
+  })), [countriesWithSheets, formData.currentCountry])
+
+  const actionOptions = useMemo(() => ACTIONS.map(value => ({ 
+    value, 
+    label: t(`select-${value}`, value), // ← Fonction maintenant
+    searchText: t(`select-${value}`, value) 
+  })), [t])
+
+  const situationOptions = useMemo(() => SITUATIONS.map(value => ({ 
+    value, 
+    label: t(`select-${value}`, value), // ← Fonction maintenant
+    searchText: t(`select-${value}`, value) 
+  })), [t])
+
 
   const isFormComplete = useMemo(() => formData.currentCountry && formData.targetCountry && formData.action && formData.situation, [formData])
 
@@ -219,18 +244,48 @@ export default function HomePage() {
       <motion.main className="max-w-none text-center w-full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }}>
         <div className="text-2xl sm:text-4xl font-bold tracking-tight leading-relaxed space-y-8 mb-16">
           <motion.div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-x-4" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2, duration: 0.5 }}>
-            <span className="whitespace-nowrap">{t.currentLocation}</span>
-            <SearchableSelect value={formData.currentCountry} onValueChange={updateFormData('currentCountry')} options={currentCountryOptions} placeholder={t.select} searchPlaceholder={t.searchCountries} selectId="currentCountry" isLoading={isLoading} error={error} />
+            <span className="whitespace-nowrap">{t('select-currentLocation', 'Je suis actuellement en')}</span>
+            <SearchableSelect 
+              value={formData.currentCountry} 
+              onValueChange={updateFormData('currentCountry')} 
+              options={currentCountryOptions} 
+              placeholder={t('select-select', 'Sélectionner')} 
+              searchPlaceholder={t('select-searchCountries', 'Rechercher un pays...')} 
+              selectId="currentCountry" 
+              isLoading={isLoading} 
+              error={error} 
+            />
           </motion.div>
           <motion.div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-x-4" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4, duration: 0.5 }}>
-            <span className="whitespace-nowrap">{t.wantTo}</span>
-            <SearchableSelect value={formData.action} onValueChange={updateFormData('action')} options={actionOptions} placeholder={t.select} searchPlaceholder={t.searchActions} selectId="action" />
-            <span className="whitespace-nowrap">{t.to}</span>
-            <SearchableSelect value={formData.targetCountry} onValueChange={updateFormData('targetCountry')} options={targetCountryOptions} placeholder={t.select} searchPlaceholder={t.searchCountries} selectId="targetCountry" />
+            <span className="whitespace-nowrap">{t('select-wantTo', 'Je veux')}</span>
+            <SearchableSelect 
+              value={formData.action} 
+              onValueChange={updateFormData('action')} 
+              options={actionOptions} 
+              placeholder={t('select-select', 'Sélectionner')} 
+              searchPlaceholder={t('select-searchActions', 'Rechercher une action...')} 
+              selectId="action" 
+            />
+            <span className="whitespace-nowrap">{t('select-to', 'en')}</span>
+            <SearchableSelect 
+              value={formData.targetCountry} 
+              onValueChange={updateFormData('targetCountry')} 
+              options={targetCountryOptions} 
+              placeholder={t('select-select', 'Sélectionner')} 
+              searchPlaceholder={t('select-searchCountries', 'Rechercher un pays...')} 
+              selectId="targetCountry" 
+            />
           </motion.div>
           <motion.div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-x-4" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6, duration: 0.5 }}>
-            <span className="whitespace-nowrap">{t.asA}</span>
-            <SearchableSelect value={formData.situation} onValueChange={updateFormData('situation')} options={situationOptions} placeholder={t.select} searchPlaceholder={t.searchSituations} selectId="situation" />
+            <span className="whitespace-nowrap">{t('select-asA', 'en tant que')}</span>
+            <SearchableSelect 
+              value={formData.situation} 
+              onValueChange={updateFormData('situation')} 
+              options={situationOptions} 
+              placeholder={t('select-select', 'Sélectionner')} 
+              searchPlaceholder={t('select-searchSituations', 'Rechercher une situation...')} 
+              selectId="situation" 
+            />
           </motion.div>
         </div>
         <div className="h-20 flex items-center justify-center">
@@ -239,7 +294,7 @@ export default function HomePage() {
               <motion.div initial={{ opacity: 0, y: 30, scale: 0.8 }} animate={{ opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 400, damping: 25, duration: 0.5 } }} exit={{ opacity: 0, y: -20, scale: 0.9, transition: { duration: 0.2 } }} whileHover={{ scale: 1.05, transition: { duration: 0.2 } }} whileTap={{ scale: 0.95 }}>
                 <Button onClick={handleSubmit} className="h-10 sm:h-16 px-5 sm:px-12 text-lg sm:text-xl font-semibold transition-all duration-300 hover:shadow-lg" size="lg">
                   <motion.span initial={{ x: 0 }} whileHover={{ x: 5 }} transition={{ duration: 0.2 }} className="flex items-center">
-                    {t.getYourGuide}
+                    {t('select-getYourGuide', 'Obtenir mon guide')}
                     <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6" />
                   </motion.span>
                 </Button>

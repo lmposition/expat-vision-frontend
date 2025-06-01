@@ -217,29 +217,31 @@ export default function NewZealandPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-6 py-8 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" onClick={() => router.back()}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-            <div className="h-4 border-l border-border"></div>
-            <Badge variant="secondary">Country Analysis</Badge>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm">
-              <Star className="h-4 w-4 mr-2" />
-              Save Country
-            </Button>
-            <Button variant="outline" size="sm">
-              <Eye className="h-4 w-4 mr-2" />
-              Compare
-            </Button>
-          </div>
-        </div>
+
+<div className="min-h-screen bg-background">
+  <div className="mx-auto px-6 py-8" style={{ maxWidth: 'calc(100vw - 48px)' }}>
+    {/* Header */}
+    <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center space-x-4">
+        <Button variant="ghost" size="sm" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
+        <div className="h-4 border-l border-border"></div>
+        <Badge variant="secondary">Country Analysis</Badge>
+      </div>
+      <div className="flex items-center space-x-2">
+        <Button variant="outline" size="sm">
+          <Star className="h-4 w-4 mr-2" />
+          Save Country
+        </Button>
+        <Button variant="outline" size="sm">
+          <Eye className="h-4 w-4 mr-2" />
+          Compare
+        </Button>
+      </div>
+    </div>
+
 
      {/* Hero Section - Version alignée et raffinée */}
 <motion.div
