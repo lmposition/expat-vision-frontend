@@ -1,318 +1,253 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { MapPin, Briefcase, ArrowRight, Sparkles, TrendingUp, Users, Globe2, Zap, BarChart3 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
+import { ArrowRight, Search, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from '@/lib/hooks/useTranslations'
+
+// Types
+interface Country {
+  id: string
+  name: string
+  code: string
+  emoji: string
+  hasSheet?: boolean
+  continent: string
+}
+
+
+
+interface ApiCountriesResponse {
+  countries: Country[]
+}
+
+interface FormData {
+  currentCountry: string
+  targetCountry: string
+  action: string
+  situation: string
+}
+
+type Situation = 'EMPLOYEE' | 'BUSINESS_FOUNDER' | 'FREELANCE' | 'INVESTOR'
+type Action = 'EXPATRIATE' | 'CREATE_COMPANY' | 'INVEST'
+
+const SITUATIONS: Situation[] = ['EMPLOYEE', 'BUSINESS_FOUNDER', 'FREELANCE', 'INVESTOR']
+const ACTIONS: Action[] = ['EXPATRIATE', 'CREATE_COMPANY', 'INVEST']
+
+const API_BASE_URL = 'https://expat-vision-backend-production.up.railway.app/api'
+
+const useCountries = () => {
+  const [allCountries, setAllCountries] = useState<Country[]>([])
+  const [countriesWithSheets, setCountriesWithSheets] = useState<Country[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchCountries = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const [allCountriesResponse, sheetsCountriesResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/countries`),
+        fetch(`${API_BASE_URL}/countries/with-sheets`)
+      ])
+
+      if (!allCountriesResponse.ok || !sheetsCountriesResponse.ok) {
+        throw new Error('Failed to fetch countries')
+      }
+
+      const [allCountriesData, sheetsCountriesData]: [ApiCountriesResponse, ApiCountriesResponse] = await Promise.all([
+        allCountriesResponse.json(),
+        sheetsCountriesResponse.json()
+      ])
+
+      const sortedAllCountries = allCountriesData.countries.sort((a, b) => a.name.localeCompare(b.name))
+      const sortedSheetsCountries = sheetsCountriesData.countries.sort((a, b) => a.name.localeCompare(b.name))
+
+      setAllCountries(sortedAllCountries)
+      setCountriesWithSheets(sortedSheetsCountries)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+      console.error('Error fetching countries:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchCountries()
+  }, [fetchCountries])
+
+  return { allCountries, countriesWithSheets, isLoading, error, refetch: fetchCountries }
+}
+
+const SearchableSelect = ({ value, onValueChange, options, placeholder, searchPlaceholder, selectId, isLoading = false, error = null }: any) => {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [isOpen, setIsOpen] = useState(false)
+  const selectRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslations()
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options
+    const lowercaseSearch = searchTerm.toLowerCase()
+    return options.filter((option: { searchText: string }) => option.searchText.toLowerCase().includes(lowercaseSearch))
+  }, [options, searchTerm])
+
+  const selectedOption = options.find((option: any) => option.value === value)
+  const displayText = selectedOption?.label || placeholder
+
+  const handleValueChange = (newValue: string) => {
+    onValueChange(newValue)
+    setSearchTerm('')
+    setIsOpen(false)
+  }
+
+  const closeDropdown = useCallback(() => {
+    setIsOpen(false)
+    setSearchTerm('')
+  }, [])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (selectRef.current && !selectRef.current.contains(event.target as Node)) {
+        closeDropdown()
+      }
+    }
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeDropdown()
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleEscape)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [isOpen, closeDropdown])
+
+  if (isLoading) {
+    return <div className="inline-flex items-center gap-2 p-2 text-2xl sm:text-4xl font-bold">
+      <Loader2 className="h-6 w-6 animate-spin" />
+      <span>{t.loading}</span>
+    </div>
+  }
+
+  if (error) {
+    return <div className="inline-flex items-center gap-2 p-2 text-2xl sm:text-4xl font-bold text-red-500">
+      <span>{t.errorLoading}</span>
+    </div>
+  }
+
+  return <div ref={selectRef}>
+    <Select value={value || ''} onValueChange={handleValueChange}>
+      <motion.div layout transition={{ type: "tween", ease: "easeOut", duration: 0.3 }}>
+        <SelectTrigger className="inline-flex w-auto h-auto p-2 border-0 border-b-4 border-foreground bg-transparent text-2xl sm:text-4xl font-bold rounded-none focus:ring-0 transition-all duration-300 whitespace-nowrap gap-2">
+          <motion.span key={displayText} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} layout className="whitespace-nowrap">
+            {displayText}
+          </motion.span>
+        </SelectTrigger>
+      </motion.div>
+      <SelectContent>
+        <div className="p-2 border-b">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input type="text" placeholder={searchPlaceholder} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-8 pr-2 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-primary" onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') setSearchTerm('') }} onClick={(e) => e.stopPropagation()} />
+          </div>
+        </div>
+        <div className="max-h-48 overflow-y-auto">
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option: { value: string; label: string }) => (
+  <SelectItem key={option.value} value={option.value}>
+    {option.label}
+  </SelectItem>
+))
+
+          ) : (
+            <div className="p-2 text-sm text-muted-foreground text-center">
+              {t.noResults}
+            </div>
+          )}
+        </div>
+      </SelectContent>
+    </Select>
+  </div>
+}
 
 export default function HomePage() {
-  const [currentCountry, setCurrentCountry] = useState('')
-  const [targetCountry, setTargetCountry] = useState('')
-  const [profession, setProfession] = useState('')
-  const [showContinue, setShowContinue] = useState(false)
   const router = useRouter()
+  const { allCountries, countriesWithSheets, isLoading, error } = useCountries()
+  const { t } = useTranslations()
+  const [formData, setFormData] = useState<FormData>({ currentCountry: '', targetCountry: '', action: '', situation: '' })
 
-  const countries = [
-    'France', 'United States', 'Canada', 'Germany', 'Australia', 
-    'New Zealand', 'United Kingdom', 'Japan', 'Singapore', 'Switzerland'
-  ]
+  const currentCountryOptions = useMemo(() => allCountries.map(country => ({ value: country.id, label: `${country.emoji} ${country.name}`, searchText: `${country.name} ${country.continent}` })), [allCountries])
+  const targetCountryOptions = useMemo(() => countriesWithSheets.filter(country => country.id !== formData.currentCountry).map(country => ({ value: country.id, label: `${country.emoji} ${country.name}`, searchText: `${country.name} ${country.continent}` })), [countriesWithSheets, formData.currentCountry])
+  const actionOptions = useMemo(() => ACTIONS.map(value => ({ value, label: t[value], searchText: t[value] })), [t])
+  const situationOptions = useMemo(() => SITUATIONS.map(value => ({ value, label: t[value], searchText: t[value] })), [t])
 
-  const professions = [
-    'Software Developer', 'Digital Nomad', 'Entrepreneur',
-    'Consultant', 'Designer', 'Marketing Manager',
-    'Data Scientist', 'Teacher', 'Engineer',
-    'Sales Manager', 'Product Manager', 'Freelancer', 'Student'
-  ]
+  const isFormComplete = useMemo(() => formData.currentCountry && formData.targetCountry && formData.action && formData.situation, [formData])
 
-  const handleFormComplete = () => {
-    if (currentCountry && targetCountry && profession) {
-      setShowContinue(true)
-    }
+  const updateFormData = (field: keyof FormData) => (value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleContinue = () => {
-    router.push('/country/new-zealand')
+  const handleSubmit = () => {
+    if (!isFormComplete) return
+    const targetCountry = countriesWithSheets.find(country => country.id === formData.targetCountry)
+    const targetCountryCode = targetCountry?.code?.toLowerCase() || 'unknown'
+    router.push(`/country/${targetCountryCode}`)
   }
 
-  const stats = [
-    { 
-      icon: Globe2, 
-      value: '195+', 
-      label: 'Countries Covered',
-      description: 'Comprehensive data on global destinations',
-      color: 'text-blue-600'
-    },
-    { 
-      icon: Users, 
-      value: '50k+', 
-      label: 'Expats Helped',
-      description: 'Success stories and testimonials',
-      color: 'text-green-600'
-    },
-    { 
-      icon: TrendingUp, 
-      value: '98%', 
-      label: 'Success Rate',
-      description: 'Successful relocations and integrations',
-      color: 'text-purple-600'
-    },
-    { 
-      icon: BarChart3, 
-      value: '24/7', 
-      label: 'Real-time Data',
-      description: 'Updated market insights and trends',
-      color: 'text-orange-600'
+  useEffect(() => {
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    document.body.style.height = '100vh'
+    return () => {
+      document.documentElement.style.overflow = 'unset'
+      document.body.style.overflow = 'unset'
+      document.body.style.height = 'auto'
     }
-  ]
-
-  const features = [
-    {
-      icon: Zap,
-      title: 'AI-Powered Matching',
-      description: 'Advanced algorithms match you with your ideal destination based on 50+ criteria'
-    },
-    {
-      icon: BarChart3,
-      title: 'Interactive Analytics',
-      description: 'Real-time charts, tax calculators, and cost of living comparisons'
-    },
-    {
-      icon: MapPin,
-      title: 'Interactive Maps',
-      description: 'Explore cities, neighborhoods, and expat-friendly areas with detailed insights'
-    },
-    {
-      icon: Users,
-      title: 'Community Network',
-      description: 'Connect with expats from your country already living in your target destination'
-    }
-  ]
+  }, [])
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="container mx-auto px-6 py-16">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-          {stats.map((stat, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card className="interactive-card relative overflow-hidden">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-2 bg-muted rounded-lg">
-                      <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                    </div>
-                    <Badge variant="secondary" className="text-xs">Live</Badge>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-3xl font-bold">{stat.value}</div>
-                    <div className="font-semibold text-sm">{stat.label}</div>
-                    <div className="text-xs text-muted-foreground">{stat.description}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          {/* Left Column - Form */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="space-y-8"
-          >
-            <div className="space-y-6">
-              <Badge className="bg-black text-white">
-                <Sparkles className="h-3 w-3 mr-2" />
-                AI-Powered Assessment
-              </Badge>
-              
-              <h1 className="text-5xl lg:text-6xl font-bold tracking-tight">
-                Your Next
-                <br />
-                <span className="bg-gradient-to-r from-black to-gray-600 bg-clip-text text-transparent">
-                  Chapter Awaits
-                </span>
-              </h1>
-              
-              <p className="text-xl text-muted-foreground leading-relaxed max-w-md">
-                Get personalized insights, real-time data, and expert guidance for your perfect expat destination.
-              </p>
-            </div>
-
-            {/* Form Card */}
-            <Card className="border-2 shadow-xl">
-              <CardContent className="p-8">
-                <div className="space-y-6">
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-semibold mb-2">Start Your Journey</h3>
-                    <p className="text-muted-foreground text-sm">Tell us about your situation for personalized recommendations</p>
-                  </div>
-
-                  <motion.div className="space-y-6">
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="space-y-3"
-                    >
-                      <div className="flex items-center text-sm font-medium">
-                        <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-xs mr-3">1</div>
-                        I currently live in
-                      </div>
-                      <Select value={currentCountry} onValueChange={(value) => {
-                        setCurrentCountry(value)
-                        handleFormComplete()
-                      }}>
-                        <SelectTrigger className="h-12">
-                          <SelectValue placeholder="🌍 Select your current country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {countries.map((country) => (
-                            <SelectItem key={country} value={country.toLowerCase()}>
-                              🌍 {country}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="space-y-3"
-                    >
-                      <div className="flex items-center text-sm font-medium">
-                        <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-xs mr-3">2</div>
-                        and I would like to expatriate to
-                      </div>
-                      <Select value={targetCountry} onValueChange={(value) => {
-                        setTargetCountry(value)
-                        handleFormComplete()
-                      }}>
-                        <SelectTrigger className="h-12">
-                          <SelectValue placeholder="🎯 Select your target country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {countries.map((country) => (
-                            <SelectItem key={country} value={country.toLowerCase()}>
-                              🎯 {country}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
-                      className="space-y-3"
-                    >
-                      <div className="flex items-center text-sm font-medium">
-                        <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center text-xs mr-3">3</div>
-                        as a
-                      </div>
-                      <Select value={profession} onValueChange={(value) => {
-                        setProfession(value)
-                        handleFormComplete()
-                      }}>
-                        <SelectTrigger className="h-12">
-                          <SelectValue placeholder="💼 Select your profession" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {professions.map((prof) => (
-                            <SelectItem key={prof} value={prof.toLowerCase()}>
-                              💼 {prof}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </motion.div>
-                  </motion.div>
-
-                  <AnimatePresence>
-                    {showContinue && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                        transition={{ 
-                          type: "spring", 
-                          stiffness: 500, 
-                          damping: 30 
-                        }}
-                        className="pt-4"
-                      >
-                        <Button 
-                          onClick={handleContinue}
-                          className="w-full h-14 text-base font-semibold bg-black hover:bg-gray-800"
-                          size="lg"
-                        >
-                          Get Your Personalized Guide
-                          <ArrowRight className="ml-2 h-5 w-5" />
-                        </Button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </CardContent>
-            </Card>
+    <div className="h-screen bg-background flex flex-col items-center justify-center px-4 sm:px-8 overflow-hidden">
+      <motion.main className="max-w-none text-center w-full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }}>
+        <div className="text-2xl sm:text-4xl font-bold tracking-tight leading-relaxed space-y-8 mb-16">
+          <motion.div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-x-4" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2, duration: 0.5 }}>
+            <span className="whitespace-nowrap">{t.currentLocation}</span>
+            <SearchableSelect value={formData.currentCountry} onValueChange={updateFormData('currentCountry')} options={currentCountryOptions} placeholder={t.select} searchPlaceholder={t.searchCountries} selectId="currentCountry" isLoading={isLoading} error={error} />
           </motion.div>
-
-          {/* Right Column - Features */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="space-y-8"
-          >
-            <div className="space-y-6">
-              <h2 className="text-3xl font-bold">Why Choose Expat Vision?</h2>
-              
-              <div className="space-y-6">
-                {features.map((feature, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 + index * 0.1 }}
-                  >
-                    <Card className="interactive-card">
-                      <CardContent className="p-6">
-                        <div className="flex items-start space-x-4">
-                          <div className="p-2 bg-black text-white rounded-lg">
-                            <feature.icon className="h-5 w-5" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold mb-2">{feature.title}</h3>
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {feature.description}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
+          <motion.div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-x-4" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4, duration: 0.5 }}>
+            <span className="whitespace-nowrap">{t.wantTo}</span>
+            <SearchableSelect value={formData.action} onValueChange={updateFormData('action')} options={actionOptions} placeholder={t.select} searchPlaceholder={t.searchActions} selectId="action" />
+            <span className="whitespace-nowrap">{t.to}</span>
+            <SearchableSelect value={formData.targetCountry} onValueChange={updateFormData('targetCountry')} options={targetCountryOptions} placeholder={t.select} searchPlaceholder={t.searchCountries} selectId="targetCountry" />
+          </motion.div>
+          <motion.div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-x-4" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6, duration: 0.5 }}>
+            <span className="whitespace-nowrap">{t.asA}</span>
+            <SearchableSelect value={formData.situation} onValueChange={updateFormData('situation')} options={situationOptions} placeholder={t.select} searchPlaceholder={t.searchSituations} selectId="situation" />
           </motion.div>
         </div>
-      </div>
+        <div className="h-20 flex items-center justify-center">
+          <AnimatePresence>
+            {isFormComplete && (
+              <motion.div initial={{ opacity: 0, y: 30, scale: 0.8 }} animate={{ opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 400, damping: 25, duration: 0.5 } }} exit={{ opacity: 0, y: -20, scale: 0.9, transition: { duration: 0.2 } }} whileHover={{ scale: 1.05, transition: { duration: 0.2 } }} whileTap={{ scale: 0.95 }}>
+                <Button onClick={handleSubmit} className="h-10 sm:h-16 px-5 sm:px-12 text-lg sm:text-xl font-semibold transition-all duration-300 hover:shadow-lg" size="lg">
+                  <motion.span initial={{ x: 0 }} whileHover={{ x: 5 }} transition={{ duration: 0.2 }} className="flex items-center">
+                    {t.getYourGuide}
+                    <ArrowRight className="ml-3 h-5 w-5 sm:h-6 sm:w-6" />
+                  </motion.span>
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.main>
     </div>
   )
 }

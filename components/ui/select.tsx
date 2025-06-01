@@ -1,7 +1,7 @@
 // components/ui/select.tsx
 import * as React from "react"
-import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Check, ChevronDown, ChevronUp } from "lucide-react"
 
 interface SelectProps {
   value?: string
@@ -38,12 +38,10 @@ const SelectContext = React.createContext<{
 
 const Select: React.FC<SelectProps> = ({ value, onValueChange, children }) => {
   const [open, setOpen] = React.useState(false)
-  
+
   return (
     <SelectContext.Provider value={{ value, onValueChange, open, setOpen }}>
-      <div className="relative">
-        {children}
-      </div>
+      <div className="relative">{children}</div>
     </SelectContext.Provider>
   )
 }
@@ -51,7 +49,7 @@ const Select: React.FC<SelectProps> = ({ value, onValueChange, children }) => {
 const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
   ({ className, children, ...props }, ref) => {
     const { open, setOpen } = React.useContext(SelectContext)
-    
+
     return (
       <button
         ref={ref}
@@ -72,7 +70,7 @@ SelectTrigger.displayName = "SelectTrigger"
 
 const SelectValue: React.FC<SelectValueProps> = ({ placeholder }) => {
   const { value } = React.useContext(SelectContext)
-  
+
   return (
     <span className={cn(!value && "text-gray-500")}>
       {value || placeholder}
@@ -81,12 +79,35 @@ const SelectValue: React.FC<SelectValueProps> = ({ placeholder }) => {
 }
 
 const SelectContent: React.FC<SelectContentProps> = ({ children }) => {
-  const { open } = React.useContext(SelectContext)
-  
+  const { open, setOpen } = React.useContext(SelectContext)
+  const contentRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        contentRef.current &&
+        !contentRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false)
+      }
+    }
+
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [open, setOpen])
+
   if (!open) return null
-  
+
   return (
-    <div className="absolute top-full left-0 z-50 w-full mt-1 max-h-96 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+    <div
+      ref={contentRef}
+      className="absolute top-full left-0 z-50 w-full mt-1 max-h-96 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+    >
       {children}
     </div>
   )
@@ -95,7 +116,7 @@ const SelectContent: React.FC<SelectContentProps> = ({ children }) => {
 const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
   ({ className, children, value, ...props }, ref) => {
     const { onValueChange, setOpen } = React.useContext(SelectContext)
-    
+
     return (
       <div
         ref={ref}

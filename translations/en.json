@@ -1,0 +1,14 @@
+{
+  "currentLocation": "Je vis actuellement en",
+  "select": "Select",
+  "searchCountries": "Rechercher un pays...",
+  "wantTo": "et je souhaite",
+  "to": "vers",
+  "asA": "en tant que",
+  "searchActions": "Rechercher une action...",
+  "searchSituations": "Rechercher un profil...",
+  "getYourGuide": "Obtenir mon guide",
+  "loading": "Chargement...",
+  "errorLoading": "❌ Erreur lors du chargement des données",
+  "noResults": "Aucun résultat trouvé"
+}

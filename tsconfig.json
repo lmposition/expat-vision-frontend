@@ -34,7 +34,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"
-  ],
+, "expat-vision/.next/types/cache-life.d.ts"  ],
   "exclude": [
     "node_modules"
   ]
