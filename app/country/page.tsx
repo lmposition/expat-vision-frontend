@@ -22,7 +22,6 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import CurrencyConverter from '@/components/CurrencyConverter'
-import TaxCalculator from '@/components/TaxComparisonCalculator'
 
 // Import dynamique pour éviter les erreurs SSR avec Leaflet
 const DynamicMap = dynamic(() => import('@/components/CountryMap'), {
@@ -303,7 +302,7 @@ export default function NewZealandPage() {
         }}
       />
       
-      <div className="w-full max-w-[83%] mx-auto px-6 py-8 lg:max-w-[83%] md:max-w-[95%] sm:max-w-[100%] sm:px-4">
+      <div className="w-full max-w-[82%] mx-auto px-6 py-8 lg:max-w-[81%] md:max-w-[95%] sm:max-w-[100%] sm:px-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
@@ -603,8 +602,7 @@ export default function NewZealandPage() {
             </Card>
           </TabsContent>
 
-          
-
+         
 
           <TabsContent value="living" className="space-y-6">
             <Card>
